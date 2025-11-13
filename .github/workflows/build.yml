@@ -16,10 +16,10 @@ jobs:
         buildProfile:
           - id: TestMac1
             platform: StandaloneOSX
-            unityProfile: "Test Mac1"
+            unityProfile: '"Test Mac1"'   # IMPORTANT: quoted inside quotes
           - id: TestMac2
             platform: StandaloneOSX
-            unityProfile: "Test Mac2"
+            unityProfile: '"Test Mac2"'   # IMPORTANT: quoted inside quotes
 
     steps:
       - uses: actions/checkout@v4
@@ -50,6 +50,7 @@ jobs:
           SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
+          git pull --rebase
           git add buildNumbers/$SAFE_BRANCH.txt
           git commit -m "Update build number for $SAFE_BRANCH"
           git push
@@ -71,7 +72,7 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: ${{ matrix.buildProfile.platform }}
-          customParameters: -buildProfile "${{ matrix.buildProfile.unityProfile }}"
+          customParameters: -buildProfile ${{ matrix.buildProfile.unityProfile }}
 
       - uses: actions/upload-artifact@v4
         with:
