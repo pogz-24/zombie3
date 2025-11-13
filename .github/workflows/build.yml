@@ -2,6 +2,9 @@ name: Build project
 
 on: push
 
+permissions:
+  contents: write
+
 jobs:
   buildForAllSupportedPlatforms:
     name: Build for ${{ matrix.targetPlatform }}
