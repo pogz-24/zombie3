@@ -7,14 +7,12 @@ permissions:
 
 jobs:
   buildForAllSupportedPlatforms:
-    name: Build ${{ steps.profile.outputs.id }}
+    name: Build (${{ matrix.buildProfile }})
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        # Format: "id,platform,unityProfile"
-        # UnityProfile must be in escaped quotes: \"Test Mac1\"
         buildProfile:
           - "TestMac1,StandaloneOSX,\"Test Mac1\""
           - "TestMac2,StandaloneOSX,\"Test Mac2\""
@@ -25,7 +23,6 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      # --- Parse matrix string into usable variables ---
       - name: Parse build profile
         id: profile
         run: |
@@ -34,7 +31,6 @@ jobs:
           echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
           echo "unityProfile=$PROFILE" >> $GITHUB_OUTPUT
 
-      # --- Per-branch build number tracking ---
       - name: Prepare branch build number file
         run: |
           SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
@@ -63,7 +59,6 @@ jobs:
           git add buildNumbers/$SAFE_BRANCH.txt
           git commit -m "Update build number for $SAFE_BRANCH"
           git push
-      # -----------------------------------------
 
       - uses: actions/cache@v3
         with:
@@ -74,7 +69,6 @@ jobs:
       - if: steps.profile.outputs.platform == 'Android'
         uses: jlumbroso/free-disk-space@v1.3.1
 
-      # --- Unity Build ---
       - uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -84,7 +78,7 @@ jobs:
           targetPlatform: ${{ steps.profile.outputs.platform }}
           customParameters: -buildProfile ${{ steps.profile.outputs.unityProfile }}
 
-      # --- Upload Artifact ---
       - uses: actions/upload-artifact@v4
         with:
-          name: Build-${{ steps.profile.outputs.id }}_${
+          name: Build-${{ steps.profile.outputs.id }}_${{ github.ref_name }}_${{ steps.buildnum.outputs.value }}
+          path: build/${{ steps.profile.outputs.platform }}
