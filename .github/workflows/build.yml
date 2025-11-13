@@ -10,7 +10,7 @@ jobs:
       fail-fast: false
       matrix:
         targetPlatform:
-          - StandaloneOSX # Build a macOS standalone (Intel 64-bit).
+          - StandaloneOSX
 
     steps:
       - uses: actions/checkout@v4
@@ -21,8 +21,8 @@ jobs:
       # --- Per-branch build number tracking ---
       - name: Prepare branch build number file
         run: |
+          SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
           mkdir -p buildNumbers
-          SAFE_BRANCH="${{ github.ref_name }}" | sed 's/\//-/g'
           FILE="buildNumbers/$SAFE_BRANCH.txt"
           if [ ! -f "$FILE" ]; then echo "0" > "$FILE"; fi
 
