@@ -2,6 +2,10 @@ name: Build project
 
 on: push
 
+concurrency:
+  group: build-${{ github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
   buildForAllSupportedPlatforms:
     name: Build for ${{ matrix.targetPlatform }}
