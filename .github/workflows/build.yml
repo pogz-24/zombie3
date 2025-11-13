@@ -7,7 +7,7 @@ permissions:
 
 jobs:
   buildForAllSupportedPlatforms:
-    name: Build (${{ steps.profile.outputs.id }})
+    name: Build (${{ matrix.buildSet }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -24,31 +24,27 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      # --- Sync remote to avoid push conflicts ---
       - name: Sync with remote branch
         run: |
           git fetch origin
           git reset --hard origin/${{ github.ref_name }}
 
-      # --- Parse the matrix string into variables ---
-      - name: Parse build profile
+      - name: Parse profile data
         id: profile
         run: |
           IFS=',' read -r ID PLATFORM PATH <<< "${{ matrix.buildSet }}"
-          echo "id=${ID}" >> $GITHUB_OUTPUT
-          echo "platform=${PLATFORM}" >> $GITHUB_OUTPUT
-          echo "profilePath=${PATH}" >> $GITHUB_OUTPUT
+          echo "id=$ID" >> $GITHUB_OUTPUT
+          echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
+          echo "profilePath=$PATH" >> $GITHUB_OUTPUT
 
-      # --- Prepare build number file ---
-      - name: Prepare branch build number file
+      - name: Prepare build number file
         run: |
           SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
           mkdir -p buildNumbers
           FILE="buildNumbers/$SAFE_BRANCH.txt"
           if [ ! -f "$FILE" ]; then echo "0" > "$FILE"; fi
 
-      # --- Read and increment build number ---
-      - name: Read and increment branch build number
+      - name: Read and increment build number
         id: buildnum
         run: |
           SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
@@ -58,7 +54,6 @@ jobs:
           echo $NEXT > "$FILE"
           echo "value=$NEXT" >> $GITHUB_OUTPUT
 
-      # --- Commit updated build number ---
       - name: Commit updated build number
         run: |
           SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
@@ -68,14 +63,12 @@ jobs:
           git commit -m "Update build number for $SAFE_BRANCH" || echo "No changes to commit"
           git push || echo "Nothing to push"
 
-      # --- Cache Library ---
       - uses: actions/cache@v3
         with:
           path: Library
           key: Library-${{ steps.profile.outputs.platform }}
           restore-keys: Library-
 
-      # --- UNITY BUILD (Official buildProfile API) ---
       - uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -85,7 +78,6 @@ jobs:
           targetPlatform: ${{ steps.profile.outputs.platform }}
           buildProfile: ${{ steps.profile.outputs.profilePath }}
 
-      # --- Upload Artifact ---
       - uses: actions/upload-artifact@v4
         with:
           name: Build-${{ steps.profile.outputs.id }}_${{ github.ref_name }}_${{ steps.buildnum.outputs.value }}
