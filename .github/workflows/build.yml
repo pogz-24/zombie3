@@ -2,10 +2,6 @@ name: Build project
 
 on: push
 
-concurrency:
-  group: build-${{ github.ref_name }}
-  cancel-in-progress: false
-
 jobs:
   buildForAllSupportedPlatforms:
     name: Build for ${{ matrix.targetPlatform }}
@@ -15,18 +11,50 @@ jobs:
       matrix:
         targetPlatform:
           - StandaloneOSX # Build a macOS standalone (Intel 64-bit).
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           lfs: true
+
+      # --- Per-branch build number tracking ---
+      - name: Prepare branch build number file
+        run: |
+          mkdir -p buildNumbers
+          SAFE_BRANCH="${{ github.ref_name }}" | sed 's/\//-/g'
+          FILE="buildNumbers/$SAFE_BRANCH.txt"
+          if [ ! -f "$FILE" ]; then echo "0" > "$FILE"; fi
+
+      - name: Read and increment branch build number
+        id: buildnum
+        run: |
+          SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
+          FILE="buildNumbers/$SAFE_BRANCH.txt"
+          NUM=$(cat "$FILE")
+          NEXT=$((NUM + 1))
+          echo $NEXT > "$FILE"
+          echo "value=$NEXT" >> $GITHUB_OUTPUT
+
+      - name: Commit updated build number
+        run: |
+          SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add buildNumbers/$SAFE_BRANCH.txt
+          git commit -m "Update build number for $SAFE_BRANCH"
+          git push
+      # -----------------------------------------
+
       - uses: actions/cache@v3
         with:
           path: Library
           key: Library-${{ matrix.targetPlatform }}
           restore-keys: Library-
+
       - if: matrix.targetPlatform == 'Android'
         uses: jlumbroso/free-disk-space@v1.3.1
+
       - uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -34,7 +62,8 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: ${{ matrix.targetPlatform }}
+
       - uses: actions/upload-artifact@v4
         with:
-          name: Build-${{ matrix.targetPlatform }}_${{ github.ref_name }}_${{ github.run_number }}
+          name: Build-${{ matrix.targetPlatform }}_${{ github.ref_name }}_${{ steps.buildnum.outputs.value }}
           path: build/${{ matrix.targetPlatform }}
