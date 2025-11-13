@@ -7,13 +7,16 @@ permissions:
 
 jobs:
   buildForAllSupportedPlatforms:
-    name: Build for ${{ matrix.targetPlatform }}
+    name: Build (${{ matrix.buildProfile }})
     runs-on: ubuntu-latest
+
     strategy:
       fail-fast: false
       matrix:
-        targetPlatform:
-          - StandaloneOSX
+        # Format: "id,platform,unityProfile"
+        buildProfile:
+          - "TestMac1,StandaloneOSX,\"Test Mac1\""
+          - "TestMac2,StandaloneOSX,\"Test Mac2\""
 
     steps:
       - uses: actions/checkout@v4
@@ -21,7 +24,22 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      # --- Per-branch build number tracking ---
+      # --- Sync repository BEFORE modifying build numbers ---
+      - name: Sync with remote branch
+        run: |
+          git fetch origin
+          git reset --hard origin/${{ github.ref_name }}
+
+      # --- Parse matrix string into variables ---
+      - name: Parse build profile
+        id: profile
+        run: |
+          IFS=',' read -r ID PLATFORM PROFILE <<< "${{ matrix.buildProfile }}"
+          echo "id=$ID" >> $GITHUB_OUTPUT
+          echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
+          echo "unityProfile=$PROFILE" >> $GITHUB_OUTPUT
+
+      # --- Prepare build number file ---
       - name: Prepare branch build number file
         run: |
           SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
@@ -29,6 +47,7 @@ jobs:
           FILE="buildNumbers/$SAFE_BRANCH.txt"
           if [ ! -f "$FILE" ]; then echo "0" > "$FILE"; fi
 
+      # --- Read and increment build number ---
       - name: Read and increment branch build number
         id: buildnum
         run: |
@@ -39,34 +58,37 @@ jobs:
           echo $NEXT > "$FILE"
           echo "value=$NEXT" >> $GITHUB_OUTPUT
 
+      # --- Commit the updated build number ---
       - name: Commit updated build number
         run: |
           SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
+
           git add buildNumbers/$SAFE_BRANCH.txt
-          git commit -m "Update build number for $SAFE_BRANCH"
-          git push
-      # -----------------------------------------
+          git commit -m "Update build number for $SAFE_BRANCH" || echo "No changes to commit"
+          git push || echo "Nothing to push"
+
+      # ---------------------------------------------
 
       - uses: actions/cache@v3
         with:
           path: Library
-          key: Library-${{ matrix.targetPlatform }}
+          key: Library-${{ steps.profile.outputs.platform }}
           restore-keys: Library-
 
-      - if: matrix.targetPlatform == 'Android'
-        uses: jlumbroso/free-disk-space@v1.3.1
-
+      # --- Unity Builder ---
       - uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          targetPlatform: ${{ matrix.targetPlatform }}
+          targetPlatform: ${{ steps.profile.outputs.platform }}
+          customParameters: -buildProfile ${{ steps.profile.outputs.unityProfile }}
 
+      # --- Upload build artifact ---
       - uses: actions/upload-artifact@v4
         with:
-          name: Build-${{ matrix.targetPlatform }}_${{ github.ref_name }}_${{ steps.buildnum.outputs.value }}
-          path: build/${{ matrix.targetPlatform }}
+          name: Build-${{ steps.profile.outputs.id }}_${{ github.ref_name }}_${{ steps.buildnum.outputs.value }}
+          path: build/${{ steps.profile.outputs.platform }}
