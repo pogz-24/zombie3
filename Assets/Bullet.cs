@@ -12,3 +12,4 @@ public class Bullet : MonoBehaviour
     }
 }
 // comment ni sya
+// another commenet ni syaa
