@@ -7,12 +7,16 @@ permissions:
 
 jobs:
   buildForAllSupportedPlatforms:
+    # Run only when branch name contains "daily"
+    if: contains(github.ref_name, 'daily')
+
     name: Build (${{ matrix.buildProfile }})
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
+        # Format: "id,platform,unityProfile"
         buildProfile:
           - "TestMac1,StandaloneOSX,\"Test Mac1\""
           - "TestMac2,StandaloneOSX,\"Test Mac2\""
@@ -23,20 +27,13 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      # --- ONLY RUN IF BRANCH CONTAINS "daily" ---
-      - name: Stop if this branch is not a daily branch
-        if: "!contains(github.ref_name, 'daily')"
-        run: |
-          echo "Branch '${{ github.ref_name }}' is not a daily branch. Skipping build."
-          exit 0
-
-      # --- Sync repository ---
+      # --- Sync repository BEFORE modifying build numbers ---
       - name: Sync with remote branch
         run: |
           git fetch origin
           git reset --hard origin/${{ github.ref_name }}
 
-      # --- Parse profile ---
+      # --- Parse matrix string into variables ---
       - name: Parse build profile
         id: profile
         run: |
@@ -53,7 +50,7 @@ jobs:
           FILE="buildNumbers/$SAFE_BRANCH.txt"
           if [ ! -f "$FILE" ]; then echo "0" > "$FILE"; fi
 
-      # --- Increment build number ---
+      # --- Read and increment build number ---
       - name: Read and increment branch build number
         id: buildnum
         run: |
@@ -64,7 +61,7 @@ jobs:
           echo $NEXT > "$FILE"
           echo "value=$NEXT" >> $GITHUB_OUTPUT
 
-      # --- Commit updated build number ---
+      # --- Commit the updated build number ---
       - name: Commit updated build number
         run: |
           SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
