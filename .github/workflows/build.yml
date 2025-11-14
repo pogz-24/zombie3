@@ -26,6 +26,24 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      # -------------------------------------------------------
+      # SAFE CLEANUP BLOCK - frees 25–40GB space on GitHub runner
+      # -------------------------------------------------------
+      - name: Free disk space on GitHub runner
+        run: |
+          echo "Disk before cleanup:"
+          df -h
+
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/share/boost || true
+          sudo rm -rf /Applications/Xcode.app || true
+          sudo docker system prune -af || true
+
+          echo "Disk after cleanup:"
+          df -h
+
       # Sync before updating build numbers
       - name: Sync with remote branch
         run: |
@@ -75,7 +93,7 @@ jobs:
           key: Library-${{ steps.profile.outputs.platform }}
           restore-keys: Library-
 
-      # Build with Unity
+      # Build with Unity (Android Quest build)
       - uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -85,7 +103,7 @@ jobs:
           targetPlatform: ${{ steps.profile.outputs.platform }}
           customParameters: -buildProfile ${{ steps.profile.outputs.unityProfile }}
 
-      # Save artifact (optional but useful)
+      # Save artifact
       - uses: actions/upload-artifact@v4
         with:
           name: Build-${{ steps.profile.outputs.id }}_${{ github.ref_name }}_${{ steps.buildnum.outputs.value }}
@@ -95,7 +113,7 @@ jobs:
       - name: Setup Oculus CLI
         uses: RageAgainstThePixel/setup-ovr-platform-util@v1
 
-      # Upload to Meta Quest Store (Alpha channel by default)
+      # Upload to Meta Quest Store (Alpha)
       - name: Upload APK to Meta Quest Store
         id: upload
         uses: RageAgainstThePixel/upload-meta-quest-build@v2
@@ -106,7 +124,7 @@ jobs:
           releaseChannel: ALPHA
           ageGroup: TEENS_AND_ADULTS
 
-      # Output the uploaded build ID for logs
+      # Output the uploaded build ID
       - name: Output Meta Quest Build ID
         run: |
           echo "Meta Quest Build ID: ${{ steps.upload.build_id }}"
