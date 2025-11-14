@@ -7,16 +7,19 @@ permissions:
 
 jobs:
   buildForAllSupportedPlatforms:
+    # Run only when branch name contains "daily"
     if: contains(github.ref_name, 'daily')
 
     name: Build (${{ matrix.buildProfile }})
-    runs-on: self-hosted   # IMPORTANT: must be macOS where your ADB is installed
+    runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
+        # Format: "id,platform,unityProfile"
         buildProfile:
-          - "Quest,Android,\"Quest\""
+          - "TestMac1,StandaloneOSX,\"Test Mac1\""
+          - "TestMac2,StandaloneOSX,\"Test Mac2\""
 
     steps:
       - uses: actions/checkout@v4
@@ -30,7 +33,7 @@ jobs:
           git fetch origin
           git reset --hard origin/${{ github.ref_name }}
 
-      # --- Parse build profile values ---
+      # --- Parse matrix string into variables ---
       - name: Parse build profile
         id: profile
         run: |
@@ -39,7 +42,7 @@ jobs:
           echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
           echo "unityProfile=$PROFILE" >> $GITHUB_OUTPUT
 
-      # --- Setup build number ---
+      # --- Prepare build number file ---
       - name: Prepare branch build number file
         run: |
           SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
@@ -47,7 +50,8 @@ jobs:
           FILE="buildNumbers/$SAFE_BRANCH.txt"
           if [ ! -f "$FILE" ]; then echo "0" > "$FILE"; fi
 
-      - name: Increment build number
+      # --- Read and increment build number ---
+      - name: Read and increment branch build number
         id: buildnum
         run: |
           SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
@@ -57,23 +61,26 @@ jobs:
           echo $NEXT > "$FILE"
           echo "value=$NEXT" >> $GITHUB_OUTPUT
 
+      # --- Commit the updated build number ---
       - name: Commit updated build number
         run: |
           SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
+
           git add buildNumbers/$SAFE_BRANCH.txt
           git commit -m "Update build number for $SAFE_BRANCH" || echo "No changes to commit"
           git push || echo "Nothing to push"
 
-      # --- Build cache ---
+      # ---------------------------------------------
+
       - uses: actions/cache@v3
         with:
           path: Library
           key: Library-${{ steps.profile.outputs.platform }}
           restore-keys: Library-
 
-      # --- Run Unity Builder ---
+      # --- Unity Builder ---
       - uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -83,28 +90,8 @@ jobs:
           targetPlatform: ${{ steps.profile.outputs.platform }}
           customParameters: -buildProfile ${{ steps.profile.outputs.unityProfile }}
 
-      # --- Upload build artifacts ---
+      # --- Upload build artifact ---
       - uses: actions/upload-artifact@v4
         with:
           name: Build-${{ steps.profile.outputs.id }}_${{ github.ref_name }}_${{ steps.buildnum.outputs.value }}
-          path: build/Android
-
-      # --- AUTO INSTALL TO QUEST DEVICE ---
-      - name: Install APK to Quest wirelessly
-        env:
-          QUEST_IP: ${{ secrets.QUEST_IP }}
-        run: |
-          echo "Downloading build artifact..."
-          mkdir output
-          gh run download --name "Build-${{ steps.profile.outputs.id }}_${{ github.ref_name }}_${{ steps.buildnum.outputs.value }}" --dir output
-
-          APK_PATH=$(find output -name "*.apk" | head -n 1)
-          echo "Found APK: $APK_PATH"
-
-          echo "Connecting to Quest..."
-          adb connect $QUEST_IP:5555
-
-          echo "Installing APK..."
-          adb install -r "$APK_PATH"
-
-          echo "Finished installing to Quest!"
+          path: build/${{ steps.profile.outputs.platform }}
