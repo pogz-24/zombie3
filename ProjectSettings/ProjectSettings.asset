@@ -165,7 +165,7 @@ PlayerSettings:
   androidMaxAspectRatio: 2.4
   androidMinAspectRatio: 1
   applicationIdentifier:
-    Android: com.DefaultCompany.testgame
+    Android: com.NinetySix.testgame
   buildNumber:
     Standalone: 0
     VisionOS: 0
