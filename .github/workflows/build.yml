@@ -7,7 +7,7 @@ permissions:
 
 jobs:
   buildForAllSupportedPlatforms:
-    # Run only when branch name contains "daily"
+    # Only build when branch name contains "daily"
     if: contains(github.ref_name, 'daily')
 
     name: Build (${{ matrix.buildProfile }})
@@ -16,10 +16,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Format: "id,platform,unityProfile"
         buildProfile:
-          - "TestMac1,StandaloneOSX,\"Test Mac1\""
-          - "TestMac2,StandaloneOSX,\"Test Mac2\""
+          - "Quest,Android,\"Quest\""
 
     steps:
       - uses: actions/checkout@v4
@@ -27,13 +25,13 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      # --- Sync repository BEFORE modifying build numbers ---
+      # Sync before updating build numbers
       - name: Sync with remote branch
         run: |
           git fetch origin
           git reset --hard origin/${{ github.ref_name }}
 
-      # --- Parse matrix string into variables ---
+      # Parse matrix values
       - name: Parse build profile
         id: profile
         run: |
@@ -42,7 +40,7 @@ jobs:
           echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
           echo "unityProfile=$PROFILE" >> $GITHUB_OUTPUT
 
-      # --- Prepare build number file ---
+      # Build number setup
       - name: Prepare branch build number file
         run: |
           SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
@@ -50,8 +48,7 @@ jobs:
           FILE="buildNumbers/$SAFE_BRANCH.txt"
           if [ ! -f "$FILE" ]; then echo "0" > "$FILE"; fi
 
-      # --- Read and increment build number ---
-      - name: Read and increment branch build number
+      - name: Increment build number
         id: buildnum
         run: |
           SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
@@ -61,26 +58,23 @@ jobs:
           echo $NEXT > "$FILE"
           echo "value=$NEXT" >> $GITHUB_OUTPUT
 
-      # --- Commit the updated build number ---
       - name: Commit updated build number
         run: |
           SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-
           git add buildNumbers/$SAFE_BRANCH.txt
           git commit -m "Update build number for $SAFE_BRANCH" || echo "No changes to commit"
           git push || echo "Nothing to push"
 
-      # ---------------------------------------------
-
+      # Cache
       - uses: actions/cache@v3
         with:
           path: Library
           key: Library-${{ steps.profile.outputs.platform }}
           restore-keys: Library-
 
-      # --- Unity Builder ---
+      # Unity Builder
       - uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -90,8 +84,28 @@ jobs:
           targetPlatform: ${{ steps.profile.outputs.platform }}
           customParameters: -buildProfile ${{ steps.profile.outputs.unityProfile }}
 
-      # --- Upload build artifact ---
+      # Upload build artifact (so GitHub keeps a copy)
       - uses: actions/upload-artifact@v4
         with:
           name: Build-${{ steps.profile.outputs.id }}_${{ github.ref_name }}_${{ steps.buildnum.outputs.value }}
-          path: build/${{ steps.profile.outputs.platform }}
+          path: build/Android
+
+      # --- Setup Oculus Platform Util ---
+      - name: Setup Oculus CLI
+        uses: RageAgainstThePixel/setup-ovr-platform-util@v1
+
+      # --- Upload to Meta Quest Store ---
+      - name: Upload APK to Meta Quest Store
+        id: upload
+        uses: RageAgainstThePixel/upload-meta-quest-build@v2
+        with:
+          appId: ${{ secrets.META_APP_ID }}
+          appSecret: ${{ secrets.META_APP_SECRET }}
+          buildDir: build/Android
+          releaseChannel: ALPHA
+          ageGroup: TEENS_AND_ADULTS
+
+      # --- Output Build ID ---
+      - name: Output Meta Quest Build ID
+        run: |
+          echo "Meta Quest Build ID: ${{ steps.upload.build_id }}"
