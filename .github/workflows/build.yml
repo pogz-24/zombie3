@@ -7,50 +7,33 @@ permissions:
 
 jobs:
   buildForAllSupportedPlatforms:
-    # Only run if branch name contains "daily"
     if: contains(github.ref_name, 'daily')
-
     name: Build (${{ matrix.buildProfile }})
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        # Format: "id,platform,unityProfile"
         buildProfile:
           - "Quest,Android,\"Quest\""
 
     steps:
+      # ---------------------------
+      # CHECK OUT PROJECT
+      # ---------------------------
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           lfs: true
 
-      # -------------------------------------------------------
-      # SAFE CLEANUP BLOCK - frees 25–40GB space on GitHub runner
-      # -------------------------------------------------------
-      - name: Free disk space on GitHub runner
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-
-          sudo rm -rf /usr/share/dotnet || true
-          sudo rm -rf /usr/local/lib/android || true
-          sudo rm -rf /opt/ghc || true
-          sudo rm -rf /usr/local/share/boost || true
-          sudo rm -rf /Applications/Xcode.app || true
-          sudo docker system prune -af || true
-
-          echo "Disk after cleanup:"
-          df -h
-
-      # Sync before updating build numbers
       - name: Sync with remote branch
         run: |
           git fetch origin
           git reset --hard origin/${{ github.ref_name }}
 
-      # Parse Quest profile
+      # ---------------------------
+      # PARSE PROFILE
+      # ---------------------------
       - name: Parse build profile
         id: profile
         run: |
@@ -59,7 +42,9 @@ jobs:
           echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
           echo "unityProfile=$PROFILE" >> $GITHUB_OUTPUT
 
-      # Build number setup
+      # ---------------------------
+      # BUILD NUMBER MANAGEMENT
+      # ---------------------------
       - name: Prepare branch build number file
         run: |
           SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
@@ -86,14 +71,37 @@ jobs:
           git commit -m "Update build number for $SAFE_BRANCH" || echo "No changes to commit"
           git push || echo "Nothing to push"
 
-      # Cache
+      # ---------------------------
+      # CLEAN UP DISK SPACE (IMPORTANT)
+      # ---------------------------
+      - name: Free disk space
+        run: |
+          echo "Removing large preinstalled directories..."
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf "/usr/local/share/Boost" || true
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY" || true
+          df -h
+
+      # ---------------------------
+      # RESTORE KEYSTORE
+      # ---------------------------
+      - name: Restore Android Keystore
+        run: |
+          echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > debug.keystore
+
+      # ---------------------------
+      # CACHE UNITY LIBRARY
+      # ---------------------------
       - uses: actions/cache@v3
         with:
           path: Library
           key: Library-${{ steps.profile.outputs.platform }}
           restore-keys: Library-
 
-      # Build with Unity (Android Quest build)
+      # ---------------------------
+      # UNITY BUILD
+      # ---------------------------
       - uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -101,19 +109,30 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: ${{ steps.profile.outputs.platform }}
-          customParameters: -buildProfile ${{ steps.profile.outputs.unityProfile }}
+          customParameters: >
+            -buildProfile ${{ steps.profile.outputs.unityProfile }}
+            -keystoreName debug.keystore
+            -keystorePass ${{ secrets.QUEST_KEYSTORE_PASSWORD }}
+            -keyalias ${{ secrets.QUEST_KEY_ALIAS }}
+            -keyaliasPass ${{ secrets.QUEST_KEY_PASSWORD }}
 
-      # Save artifact
+      # ---------------------------
+      # ARTIFACT STORAGE
+      # ---------------------------
       - uses: actions/upload-artifact@v4
         with:
           name: Build-${{ steps.profile.outputs.id }}_${{ github.ref_name }}_${{ steps.buildnum.outputs.value }}
           path: build/Android
 
-      # Install Oculus CLI
+      # ---------------------------
+      # OCULUS CLI INSTALL
+      # ---------------------------
       - name: Setup Oculus CLI
         uses: RageAgainstThePixel/setup-ovr-platform-util@v1
 
-      # Upload to Meta Quest Store (Alpha)
+      # ---------------------------
+      # QUEST STORE UPLOAD
+      # ---------------------------
       - name: Upload APK to Meta Quest Store
         id: upload
         uses: RageAgainstThePixel/upload-meta-quest-build@v2
@@ -124,7 +143,9 @@ jobs:
           releaseChannel: ALPHA
           ageGroup: TEENS_AND_ADULTS
 
-      # Output the uploaded build ID
+      # ---------------------------
+      # OUTPUT BUILD ID
+      # ---------------------------
       - name: Output Meta Quest Build ID
         run: |
           echo "Meta Quest Build ID: ${{ steps.upload.build_id }}"
