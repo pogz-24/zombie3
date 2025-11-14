@@ -7,33 +7,48 @@ permissions:
 
 jobs:
   buildForAllSupportedPlatforms:
+    # Only run when branch name contains "daily"
     if: contains(github.ref_name, 'daily')
+
     name: Build (${{ matrix.buildProfile }})
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
+        # Format: "id,platform,unityProfile"
         buildProfile:
           - "Quest,Android,\"Quest\""
 
     steps:
-      # ---------------------------
-      # CHECK OUT PROJECT
-      # ---------------------------
+
+      # ----------------------------------------------------------------------
+      # CLEAN OLD UNITY BUILDS (PREVENT NO SPACE LEFT ON DEVICE)
+      # ----------------------------------------------------------------------
+      - name: Free Disk Space (GitHub Runner Cleanup)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          docker-images: true
+          large-packages: true
+
+      # ----------------------------------------------------------------------
+      # CHECKOUT
+      # ----------------------------------------------------------------------
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           lfs: true
 
+      # Sync project first
       - name: Sync with remote branch
         run: |
           git fetch origin
           git reset --hard origin/${{ github.ref_name }}
 
-      # ---------------------------
-      # PARSE PROFILE
-      # ---------------------------
+      # ----------------------------------------------------------------------
+      # PARSE MATRIX
+      # ----------------------------------------------------------------------
       - name: Parse build profile
         id: profile
         run: |
@@ -42,9 +57,9 @@ jobs:
           echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
           echo "unityProfile=$PROFILE" >> $GITHUB_OUTPUT
 
-      # ---------------------------
-      # BUILD NUMBER MANAGEMENT
-      # ---------------------------
+      # ----------------------------------------------------------------------
+      # BUILD NUMBER
+      # ----------------------------------------------------------------------
       - name: Prepare branch build number file
         run: |
           SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
@@ -71,37 +86,29 @@ jobs:
           git commit -m "Update build number for $SAFE_BRANCH" || echo "No changes to commit"
           git push || echo "Nothing to push"
 
-      # ---------------------------
-      # CLEAN UP DISK SPACE (IMPORTANT)
-      # ---------------------------
-      - name: Free disk space
-        run: |
-          echo "Removing large preinstalled directories..."
-          sudo rm -rf /usr/share/dotnet || true
-          sudo rm -rf /opt/ghc || true
-          sudo rm -rf "/usr/local/share/Boost" || true
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY" || true
-          df -h
-
-      # ---------------------------
-      # RESTORE KEYSTORE
-      # ---------------------------
+      # ----------------------------------------------------------------------
+      # RESTORE KEYSTORE + FIX UNITY BUILDER BRANCH DIRTY ERROR
+      # ----------------------------------------------------------------------
       - name: Restore Android Keystore
         run: |
           echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > debug.keystore
 
-      # ---------------------------
-      # CACHE UNITY LIBRARY
-      # ---------------------------
+      - name: Ignore debug keystore so branch stays clean
+        run: |
+          echo "debug.keystore" >> .git/info/exclude
+
+      # ----------------------------------------------------------------------
+      # CACHE
+      # ----------------------------------------------------------------------
       - uses: actions/cache@v3
         with:
           path: Library
           key: Library-${{ steps.profile.outputs.platform }}
           restore-keys: Library-
 
-      # ---------------------------
+      # ----------------------------------------------------------------------
       # UNITY BUILD
-      # ---------------------------
+      # ----------------------------------------------------------------------
       - uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -109,30 +116,20 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: ${{ steps.profile.outputs.platform }}
-          customParameters: >
-            -buildProfile ${{ steps.profile.outputs.unityProfile }}
-            -keystoreName debug.keystore
-            -keystorePass ${{ secrets.QUEST_KEYSTORE_PASSWORD }}
-            -keyalias ${{ secrets.QUEST_KEY_ALIAS }}
-            -keyaliasPass ${{ secrets.QUEST_KEY_PASSWORD }}
+          customParameters: -buildProfile ${{ steps.profile.outputs.unityProfile }}
 
-      # ---------------------------
-      # ARTIFACT STORAGE
-      # ---------------------------
+      # Save output
       - uses: actions/upload-artifact@v4
         with:
           name: Build-${{ steps.profile.outputs.id }}_${{ github.ref_name }}_${{ steps.buildnum.outputs.value }}
           path: build/Android
 
-      # ---------------------------
-      # OCULUS CLI INSTALL
-      # ---------------------------
+      # ----------------------------------------------------------------------
+      # OCULUS CLI + META QUEST STORE UPLOAD
+      # ----------------------------------------------------------------------
       - name: Setup Oculus CLI
         uses: RageAgainstThePixel/setup-ovr-platform-util@v1
 
-      # ---------------------------
-      # QUEST STORE UPLOAD
-      # ---------------------------
       - name: Upload APK to Meta Quest Store
         id: upload
         uses: RageAgainstThePixel/upload-meta-quest-build@v2
@@ -143,9 +140,6 @@ jobs:
           releaseChannel: ALPHA
           ageGroup: TEENS_AND_ADULTS
 
-      # ---------------------------
-      # OUTPUT BUILD ID
-      # ---------------------------
       - name: Output Meta Quest Build ID
         run: |
           echo "Meta Quest Build ID: ${{ steps.upload.build_id }}"
