@@ -10,7 +10,7 @@ jobs:
     if: contains(github.ref_name, 'daily')
 
     name: Build (${{ matrix.buildProfile }})
-    runs-on: macos-latest   # IMPORTANT: must be macOS where your ADB is installed
+    runs-on: self-hosted   # IMPORTANT: must be macOS where your ADB is installed
 
     strategy:
       fail-fast: false
