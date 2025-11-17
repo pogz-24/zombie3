@@ -1,1 +1,164 @@
 
+name: Build Quest Project
+
+on: push
+
+permissions:
+  contents: write
+
+jobs:
+  build-quest:
+    if: contains(github.ref_name, 'develop')
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ----------------------------------------------------------------------
+      # FREE DISK SPACE
+      # ----------------------------------------------------------------------
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          docker-images: true
+          large-packages: true
+
+      # ----------------------------------------------------------------------
+      # CHECKOUT
+      # ----------------------------------------------------------------------
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Sync with remote branch
+        run: |
+          git fetch origin
+          git reset --hard origin/${{ github.ref_name }}
+
+      # ----------------------------------------------------------------------
+      # PARSE BUILD PROFILE
+      # ----------------------------------------------------------------------
+      - name: Set build profile info
+        id: profile
+        run: |
+          echo "id=Quest" >> $GITHUB_OUTPUT
+          echo "platform=Android" >> $GITHUB_OUTPUT
+          echo "unityProfile=Quest" >> $GITHUB_OUTPUT
+
+      # ----------------------------------------------------------------------
+      # AUTO BUILD NUMBER
+      # ----------------------------------------------------------------------
+      - name: Prepare branch build number file
+        run: |
+          SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
+          mkdir -p buildNumbers
+          FILE="buildNumbers/$SAFE_BRANCH.txt"
+          if [ ! -f "$FILE" ]; then echo "0" > "$FILE"; fi
+
+      - name: Increment build number
+        id: buildnum
+        run: |
+          SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
+          FILE="buildNumbers/$SAFE_BRANCH.txt"
+          NUM=$(cat "$FILE")
+          NEXT=$((NUM + 1))
+          echo $NEXT > "$FILE"
+          echo "value=$NEXT" >> $GITHUB_OUTPUT
+
+      - name: Commit updated build number
+        run: |
+          SAFE_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add buildNumbers/$SAFE_BRANCH.txt
+          git commit -m "Update build number for $SAFE_BRANCH" || echo "No changes to commit"
+          git push || echo "Nothing to push"
+
+      # ----------------------------------------------------------------------
+      # RESTORE KEYSTORE
+      # ----------------------------------------------------------------------
+      - name: Restore Android Keystore
+        run: |
+          mkdir -p Assets
+          echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > Assets/user2.keystore
+
+      # ----------------------------------------------------------------------
+      # EXPORT SIGNING SECRETS FOR ALL STEPS
+      # ----------------------------------------------------------------------
+      - name: Export signing secrets
+        run: |
+          echo "ANDROID_KEYSTORE_PASS=${{ secrets.QUEST_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+          echo "ANDROID_KEY_ALIAS_NAME=${{ secrets.QUEST_KEY_ALIAS }}" >> $GITHUB_ENV
+          echo "ANDROID_KEY_ALIAS_PASS=${{ secrets.QUEST_KEY_PASSWORD }}" >> $GITHUB_ENV
+
+      # ----------------------------------------------------------------------
+      # VERIFY KEYSTORE + PASSWORDS
+      # ----------------------------------------------------------------------
+      - name: Verify Keystore + Passwords
+        run: |
+          echo "Checking keystore exists at: $GITHUB_WORKSPACE/Assets/user2.keystore"
+          if [ -f "$GITHUB_WORKSPACE/Assets/user2.keystore" ]; then
+            echo "Keystore FOUND."
+          else
+            echo "Keystore NOT FOUND!"
+            exit 1
+          fi
+
+          echo "Keystore password length: ${#ANDROID_KEYSTORE_PASS}"
+          echo "Alias: $ANDROID_KEY_ALIAS_NAME"
+          echo "Alias password length: ${#ANDROID_KEY_ALIAS_PASS}"
+
+      # ----------------------------------------------------------------------
+      # CACHE
+      # ----------------------------------------------------------------------
+      - uses: actions/cache@v3
+        with:
+          path: Library
+          key: Library-Android
+          restore-keys: Library-
+
+      # ----------------------------------------------------------------------
+      # UNITY BUILD WITH SIGNING
+      # ----------------------------------------------------------------------
+      - name: Build Unity Project
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: Android
+          customParameters: >
+            -buildProfile Quest
+            -keystoreName "user2.keystore"
+            -keystorePass "$ANDROID_KEYSTORE_PASS"
+            -keyaliasName "$ANDROID_KEY_ALIAS_NAME"
+            -keyaliasPass "$ANDROID_KEY_ALIAS_PASS"
+
+      # ----------------------------------------------------------------------
+      # SAVE APK
+      # ----------------------------------------------------------------------
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QuestBuild_${{ github.ref_name }}_${{ steps.buildnum.outputs.value }}
+          path: build/Android
+
+      # ----------------------------------------------------------------------
+      # META QUEST STORE UPLOAD
+      # ----------------------------------------------------------------------
+      - name: Setup Oculus CLI
+        uses: RageAgainstThePixel/setup-ovr-platform-util@v1
+
+      - name: Upload APK to Meta Quest Store
+        id: upload
+        uses: RageAgainstThePixel/upload-meta-quest-build@v2
+        with:
+          appId: ${{ secrets.META_APP_ID }}
+          appSecret: ${{ secrets.META_APP_SECRET }}
+          buildDir: build/Android
+          releaseChannel: ALPHA
+          ageGroup: TEENS_AND_ADULTS
+
+      - name: Output Meta Quest Build ID
+        run: echo "Meta Quest Build ID ${{ steps.upload.outputs.build_id }}"
