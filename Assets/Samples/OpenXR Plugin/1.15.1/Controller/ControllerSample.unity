@@ -4242,7 +4242,7 @@ GameObject:
   - component: {fileID: 1060976102}
   - component: {fileID: 1060976104}
   m_Layer: 0
-  m_Name: XRtestsss
+  m_Name: XR
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
