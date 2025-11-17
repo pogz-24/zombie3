@@ -75,12 +75,46 @@ jobs:
           git push || echo "Nothing to push"
 
       # ----------------------------------------------------------------------
-      # RESTORE KEYSTORE
+      # RESTORE KEYSTORE (CORRECT LOCATION FOR UNITY BUILDER)
       # ----------------------------------------------------------------------
       - name: Restore Android Keystore
         run: |
-          mkdir -p Assets
-          echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > Assets/user2.keystore
+          mkdir -p "$GITHUB_WORKSPACE/Assets"
+          echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > "$GITHUB_WORKSPACE/Assets/user2.keystore"
+
+      # ----------------------------------------------------------------------
+      # CHECK KEYSTORE + PASSWORDS BEFORE UNITY BUILD
+      # ----------------------------------------------------------------------
+      - name: Verify Keystore + Passwords
+        run: |
+          echo "Checking keystore exists at: $GITHUB_WORKSPACE/Assets/user2.keystore"
+          if [ -f "$GITHUB_WORKSPACE/Assets/user2.keystore" ]; then
+            echo "Keystore file FOUND."
+          else
+            echo "ERROR: Keystore file NOT found!"
+            exit 1
+          fi
+
+          if [ -z "${{ secrets.QUEST_KEYSTORE_PASSWORD }}" ]; then
+            echo "ERROR: Keystore password EMPTY!"
+            exit 1
+          else
+            echo "Keystore password length OK: ${#${{ secrets.QUEST_KEYSTORE_PASSWORD }}}"
+          fi
+
+          if [ -z "${{ secrets.QUEST_KEY_ALIAS }}" ]; then
+            echo "ERROR: Alias name EMPTY!"
+            exit 1
+          else
+            echo "Alias name OK: ${{ secrets.QUEST_KEY_ALIAS }}"
+          fi
+
+          if [ -z "${{ secrets.QUEST_KEY_PASSWORD }}" ]; then
+            echo "ERROR: Alias password EMPTY!"
+            exit 1
+          else
+            echo "Alias password length OK: ${#${{ secrets.QUEST_KEY_PASSWORD }}}"
+          fi
 
       # ----------------------------------------------------------------------
       # CACHE
@@ -105,9 +139,9 @@ jobs:
           customParameters: >
             -buildProfile Quest
             -keystoreName "user2.keystore"
-            -keystorePass "$test123"
-            -keyaliasName "$testapp4"
-            -keyaliasPass "$test123"
+            -keystorePass "${{ secrets.QUEST_KEYSTORE_PASSWORD }}"
+            -keyaliasName "${{ secrets.QUEST_KEY_ALIAS }}"
+            -keyaliasPass "${{ secrets.QUEST_KEY_PASSWORD }}"
 
       # ----------------------------------------------------------------------
       # SAVE BUILD APK
