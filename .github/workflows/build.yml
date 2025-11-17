@@ -35,7 +35,7 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          buildProfile: 'Assets/Settings/Build Profiles/Quest.asset'
+          targetPlatform: Android
           androidExportType: androidPackage   # APK for Quest
           androidKeystoreName: user2.keystore
           androidKeystoreBase64: ${{ secrets.QUEST_KEYSTORE_BASE64 }}
