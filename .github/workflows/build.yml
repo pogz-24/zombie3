@@ -7,25 +7,22 @@ permissions:
 
 jobs:
   buildForAllSupportedPlatforms:
-    # Only run when branch name contains "daily"
     if: contains(github.ref_name, 'daily')
-
     name: Build (${{ matrix.buildProfile }})
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        # Format: "id,platform,unityProfile"
         buildProfile:
           - "Quest,Android,\"Quest\""
 
     steps:
 
       # ----------------------------------------------------------------------
-      # CLEAN OLD UNITY BUILDS (PREVENT NO SPACE LEFT ON DEVICE)
+      # FREE DISK SPACE
       # ----------------------------------------------------------------------
-      - name: Free Disk Space (GitHub Runner Cleanup)
+      - name: Free Disk Space
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: true
@@ -40,14 +37,13 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      # Sync project first
       - name: Sync with remote branch
         run: |
           git fetch origin
           git reset --hard origin/${{ github.ref_name }}
 
       # ----------------------------------------------------------------------
-      # PARSE MATRIX
+      # PARSE PROFILE
       # ----------------------------------------------------------------------
       - name: Parse build profile
         id: profile
@@ -87,15 +83,12 @@ jobs:
           git push || echo "Nothing to push"
 
       # ----------------------------------------------------------------------
-      # RESTORE KEYSTORE + FIX UNITY BUILDER BRANCH DIRTY ERROR
+      # RESTORE KEYSTORE (user2.keystore)
       # ----------------------------------------------------------------------
       - name: Restore Android Keystore
         run: |
-          echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > debug.keystore
-
-      - name: Ignore debug keystore so branch stays clean
-        run: |
-          echo "debug.keystore" >> .git/info/exclude
+          mkdir -p Assets
+          echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > Assets/user2.keystore
 
       # ----------------------------------------------------------------------
       # CACHE
@@ -107,25 +100,33 @@ jobs:
           restore-keys: Library-
 
       # ----------------------------------------------------------------------
-      # UNITY BUILD
+      # UNITY BUILD WITH SIGNING
       # ----------------------------------------------------------------------
-      - uses: game-ci/unity-builder@v4
+      - name: Build Unity Project
+        uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: ${{ steps.profile.outputs.platform }}
-          customParameters: -buildProfile ${{ steps.profile.outputs.unityProfile }}
+          customParameters: >
+            -buildProfile ${{ steps.profile.outputs.unityProfile }}
+            -keystoreName "user2.keystore"
+            -keystorePass "${{ secrets.QUEST_KEYSTORE_PASSWORD }}"
+            -keyaliasName "${{ secrets.QUEST_KEY_ALIAS }}"
+            -keyaliasPass "${{ secrets.QUEST_KEY_PASSWORD }}"
 
-      # Save output
+      # ----------------------------------------------------------------------
+      # ARTIFACT
+      # ----------------------------------------------------------------------
       - uses: actions/upload-artifact@v4
         with:
           name: Build-${{ steps.profile.outputs.id }}_${{ github.ref_name }}_${{ steps.buildnum.outputs.value }}
           path: build/Android
 
       # ----------------------------------------------------------------------
-      # OCULUS CLI + META QUEST STORE UPLOAD
+      # META QUEST UPLOAD
       # ----------------------------------------------------------------------
       - name: Setup Oculus CLI
         uses: RageAgainstThePixel/setup-ovr-platform-util@v1
