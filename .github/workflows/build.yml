@@ -1,4 +1,4 @@
-name: Build project
+name: Build Quest Project
 
 on: push
 
@@ -6,16 +6,9 @@ permissions:
   contents: write
 
 jobs:
-  buildForAllSupportedPlatforms:
+  build-quest:
     if: contains(github.ref_name, 'daily')
-    name: Build (${{ matrix.buildProfile }})
     runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        buildProfile:
-          - "Quest,Android,\"Quest\""
 
     steps:
 
@@ -43,15 +36,14 @@ jobs:
           git reset --hard origin/${{ github.ref_name }}
 
       # ----------------------------------------------------------------------
-      # PARSE PROFILE
+      # PARSE BUILD PROFILE
       # ----------------------------------------------------------------------
-      - name: Parse build profile
+      - name: Set build profile info
         id: profile
         run: |
-          IFS=',' read -r ID PLATFORM PROFILE <<< "${{ matrix.buildProfile }}"
-          echo "id=$ID" >> $GITHUB_OUTPUT
-          echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
-          echo "unityProfile=$PROFILE" >> $GITHUB_OUTPUT
+          echo "id=Quest" >> $GITHUB_OUTPUT
+          echo "platform=Android" >> $GITHUB_OUTPUT
+          echo "unityProfile=Quest" >> $GITHUB_OUTPUT
 
       # ----------------------------------------------------------------------
       # BUILD NUMBER
@@ -83,7 +75,7 @@ jobs:
           git push || echo "Nothing to push"
 
       # ----------------------------------------------------------------------
-      # RESTORE KEYSTORE (user2.keystore)
+      # RESTORE KEYSTORE (Assets/user2.keystore)
       # ----------------------------------------------------------------------
       - name: Restore Android Keystore
         run: |
@@ -96,7 +88,7 @@ jobs:
       - uses: actions/cache@v3
         with:
           path: Library
-          key: Library-${{ steps.profile.outputs.platform }}
+          key: Library-Android
           restore-keys: Library-
 
       # ----------------------------------------------------------------------
@@ -109,24 +101,24 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          targetPlatform: ${{ steps.profile.outputs.platform }}
+          targetPlatform: Android
           customParameters: >
-            -buildProfile ${{ steps.profile.outputs.unityProfile }}
+            -buildProfile Quest
             -keystoreName "user2.keystore"
             -keystorePass "${{ secrets.QUEST_KEYSTORE_PASSWORD }}"
             -keyaliasName "${{ secrets.QUEST_KEY_ALIAS }}"
             -keyaliasPass "${{ secrets.QUEST_KEY_PASSWORD }}"
 
       # ----------------------------------------------------------------------
-      # ARTIFACT
+      # SAVE BUILD APK
       # ----------------------------------------------------------------------
       - uses: actions/upload-artifact@v4
         with:
-          name: Build-${{ steps.profile.outputs.id }}_${{ github.ref_name }}_${{ steps.buildnum.outputs.value }}
+          name: QuestBuild_${{ github.ref_name }}_${{ steps.buildnum.outputs.value }}
           path: build/Android
 
       # ----------------------------------------------------------------------
-      # META QUEST UPLOAD
+      # META QUEST STORE UPLOAD
       # ----------------------------------------------------------------------
       - name: Setup Oculus CLI
         uses: RageAgainstThePixel/setup-ovr-platform-util@v1
@@ -142,5 +134,4 @@ jobs:
           ageGroup: TEENS_AND_ADULTS
 
       - name: Output Meta Quest Build ID
-        run: |
-          echo "Meta Quest Build ID: ${{ steps.upload.build_id }}"
+        run: echo "Meta Quest Build ID: ${{ steps.upload.build_id }}"
