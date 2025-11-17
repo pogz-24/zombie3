@@ -36,18 +36,35 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: Android
+          buildProfile: 'Assets/Settings/Build Profiles/Quest.asset'
           androidExportType: androidPackage   # APK for Quest
           androidKeystoreName: user2.keystore
           androidKeystoreBase64: ${{ secrets.QUEST_KEYSTORE_BASE64 }}
           androidKeystorePass: ${{ secrets.QUEST_KEYSTORE_PASSWORD }}
           androidKeyaliasName: ${{ secrets.QUEST_KEY_ALIAS }}
           androidKeyaliasPass: ${{ secrets.QUEST_KEY_PASSWORD }}
-          androidTargetSdkVersion: AndroidApiLevel35
-
-          # KEEP USING YOUR QUEST BUILD PROFILE
-          customParameters: -buildProfile Quest
+          androidTargetSdkVersion: AndroidApiLevel34
 
       - uses: actions/upload-artifact@v4
         with:
           name: quest-build
           path: build/Android
+
+      # ----------------------------------------------------------------------
+      # META QUEST STORE UPLOAD
+      # ----------------------------------------------------------------------
+      - name: Setup Oculus CLI
+        uses: RageAgainstThePixel/setup-ovr-platform-util@v1
+
+      - name: Upload APK to Meta Quest Store
+        id: upload
+        uses: RageAgainstThePixel/upload-meta-quest-build@v2
+        with:
+          appId: ${{ secrets.META_APP_ID }}
+          appSecret: ${{ secrets.META_APP_SECRET }}
+          buildDir: build/Android
+          releaseChannel: ALPHA
+          ageGroup: TEENS_AND_ADULTS
+
+      - name: Output Meta Quest Build ID
+        run: echo "Meta Quest Build ID ${{ steps.upload.outputs.build_id }}"

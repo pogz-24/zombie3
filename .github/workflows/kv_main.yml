@@ -1,7 +1,7 @@
 
 name: KV Quest Project
 
-on: push
+on: workflow_dispatch
 
 permissions:
   contents: write
@@ -10,7 +10,6 @@ jobs:
   build-quest:
     if: contains(github.ref_name, 'develop')
     runs-on: ubuntu-latest
-
     steps:
 
       # ----------------------------------------------------------------------
