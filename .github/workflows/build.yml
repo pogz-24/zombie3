@@ -46,7 +46,7 @@ jobs:
           echo "unityProfile=Quest" >> $GITHUB_OUTPUT
 
       # ----------------------------------------------------------------------
-      # BUILD NUMBER
+      # AUTO BUILD NUMBER
       # ----------------------------------------------------------------------
       - name: Prepare branch build number file
         run: |
@@ -75,46 +75,38 @@ jobs:
           git push || echo "Nothing to push"
 
       # ----------------------------------------------------------------------
-      # RESTORE KEYSTORE (CORRECT LOCATION FOR UNITY BUILDER)
+      # RESTORE KEYSTORE
       # ----------------------------------------------------------------------
       - name: Restore Android Keystore
         run: |
-          mkdir -p "$GITHUB_WORKSPACE/Assets"
-          echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > "$GITHUB_WORKSPACE/Assets/user2.keystore"
+          mkdir -p Assets
+          echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > Assets/user2.keystore
 
       # ----------------------------------------------------------------------
-      # CHECK KEYSTORE + PASSWORDS BEFORE UNITY BUILD
+      # EXPORT SIGNING SECRETS FOR ALL STEPS
+      # ----------------------------------------------------------------------
+      - name: Export signing secrets
+        run: |
+          echo "ANDROID_KEYSTORE_PASS=${{ secrets.QUEST_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+          echo "ANDROID_KEY_ALIAS_NAME=${{ secrets.QUEST_KEY_ALIAS }}" >> $GITHUB_ENV
+          echo "ANDROID_KEY_ALIAS_PASS=${{ secrets.QUEST_KEY_PASSWORD }}" >> $GITHUB_ENV
+
+      # ----------------------------------------------------------------------
+      # VERIFY KEYSTORE + PASSWORDS
       # ----------------------------------------------------------------------
       - name: Verify Keystore + Passwords
         run: |
           echo "Checking keystore exists at: $GITHUB_WORKSPACE/Assets/user2.keystore"
           if [ -f "$GITHUB_WORKSPACE/Assets/user2.keystore" ]; then
-            echo "Keystore file FOUND."
+            echo "Keystore FOUND."
           else
-            echo "ERROR: Keystore file NOT found!"
+            echo "Keystore NOT FOUND!"
             exit 1
           fi
 
-          if [ -z "${{ secrets.QUEST_KEYSTORE_PASSWORD }}" ]; then
-            echo "ERROR: Keystore password EMPTY!"
-            exit 1
-          else
-            echo "Keystore password length OK: ${#${{ secrets.QUEST_KEYSTORE_PASSWORD }}}"
-          fi
-
-          if [ -z "${{ secrets.QUEST_KEY_ALIAS }}" ]; then
-            echo "ERROR: Alias name EMPTY!"
-            exit 1
-          else
-            echo "Alias name OK: ${{ secrets.QUEST_KEY_ALIAS }}"
-          fi
-
-          if [ -z "${{ secrets.QUEST_KEY_PASSWORD }}" ]; then
-            echo "ERROR: Alias password EMPTY!"
-            exit 1
-          else
-            echo "Alias password length OK: ${#${{ secrets.QUEST_KEY_PASSWORD }}}"
-          fi
+          echo "Keystore password length: ${#ANDROID_KEYSTORE_PASS}"
+          echo "Alias: $ANDROID_KEY_ALIAS_NAME"
+          echo "Alias password length: ${#ANDROID_KEY_ALIAS_PASS}"
 
       # ----------------------------------------------------------------------
       # CACHE
@@ -139,12 +131,12 @@ jobs:
           customParameters: >
             -buildProfile Quest
             -keystoreName "user2.keystore"
-            -keystorePass "${{ secrets.QUEST_KEYSTORE_PASSWORD }}"
-            -keyaliasName "${{ secrets.QUEST_KEY_ALIAS }}"
-            -keyaliasPass "${{ secrets.QUEST_KEY_PASSWORD }}"
+            -keystorePass "$ANDROID_KEYSTORE_PASS"
+            -keyaliasName "$ANDROID_KEY_ALIAS_NAME"
+            -keyaliasPass "$ANDROID_KEY_ALIAS_PASS"
 
       # ----------------------------------------------------------------------
-      # SAVE BUILD APK
+      # SAVE APK
       # ----------------------------------------------------------------------
       - uses: actions/upload-artifact@v4
         with:
