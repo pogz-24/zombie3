@@ -75,12 +75,43 @@ jobs:
           git push || echo "Nothing to push"
 
       # ----------------------------------------------------------------------
-      # RESTORE KEYSTORE (Assets/user2.keystore)
+      # RESTORE KEYSTORE
       # ----------------------------------------------------------------------
       - name: Restore Android Keystore
         run: |
           mkdir -p Assets
           echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > Assets/user2.keystore
+
+      # ----------------------------------------------------------------------
+      # VERIFY KEYSTORE + SIGNING DEBUG
+      # ----------------------------------------------------------------------
+      - name: Verify keystore exists
+        run: |
+          echo "Checking Assets folder:"
+          ls -l Assets || echo "Assets folder missing!"
+
+          echo ""
+          echo "Searching for keystore files recursively:"
+          find . -type f -name "*.keystore" -o -name "*.jks"
+
+          echo ""
+          echo "Working directory:"
+          pwd
+
+      - name: Debug keystore env vars
+        run: |
+          echo "ANDROID_KEYSTORE_NAME: user2.keystore"
+          echo "KEYSTORE password length: ${#secrets.QUEST_KEYSTORE_PASSWORD}"
+          echo "Alias: ${{ secrets.QUEST_KEY_ALIAS }}"
+          echo "Alias password length: ${#secrets.QUEST_KEY_PASSWORD}"
+          echo "(GitHub masks values automatically)"
+
+      - name: Print Unity signing info from ProjectSettings
+        run: |
+          echo "=== ProjectSettings signing search ==="
+          grep -R "keystore" -n ProjectSettings/ || echo "No keystore entries in ProjectSettings"
+          grep -R "keyalias" -n ProjectSettings/ || echo "No keyalias entries in ProjectSettings"
+          echo "=== End signing dump ==="
 
       # ----------------------------------------------------------------------
       # CACHE
@@ -134,4 +165,4 @@ jobs:
           ageGroup: TEENS_AND_ADULTS
 
       - name: Output Meta Quest Build ID
-        run: echo Meta Quest Build ID ${{ steps.upload.outputs.build_id }}
+        run: echo "Meta Quest Build ID ${{ steps.upload.outputs.build_id }}"
