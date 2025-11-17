@@ -7,9 +7,7 @@ permissions:
 
 jobs:
   buildForAllSupportedPlatforms:
-    # Only run when branch name contains "daily"
     if: contains(github.ref_name, 'daily')
-
     name: Build (${{ matrix.buildProfile }})
     runs-on: ubuntu-latest
 
@@ -22,7 +20,7 @@ jobs:
     steps:
 
       # ----------------------------------------------------------------------
-      # FREE DISK SPACE (Fixes no-space errors on GitHub runner)
+      # FREE DISK SPACE (Fixes runner no-space errors)
       # ----------------------------------------------------------------------
       - name: Free Disk Space
         uses: jlumbroso/free-disk-space@main
@@ -45,7 +43,7 @@ jobs:
           git reset --hard origin/${{ github.ref_name }}
 
       # ----------------------------------------------------------------------
-      # PARSE MATRIX
+      # PARSE PROFILE
       # ----------------------------------------------------------------------
       - name: Parse build profile
         id: profile
@@ -90,6 +88,7 @@ jobs:
       - name: Restore Android Keystore
         run: |
           echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > user.keystore
+          echo "user.keystore" >> .git/info/exclude
 
       # ----------------------------------------------------------------------
       # CACHE
@@ -101,7 +100,7 @@ jobs:
           restore-keys: Library-
 
       # ----------------------------------------------------------------------
-      # UNITY BUILD
+      # UNITY BUILD (WITH SIGNING)
       # ----------------------------------------------------------------------
       - name: Build Unity Project
         uses: game-ci/unity-builder@v4
@@ -109,17 +108,19 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+
+          ANDROID_KEYSTORE_NAME: "user.keystore"
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.QUEST_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASS: ${{ secrets.QUEST_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS_NAME: ${{ secrets.QUEST_KEY_ALIAS }}
+          ANDROID_KEY_ALIAS_PASS: ${{ secrets.QUEST_KEY_PASSWORD }}
+
         with:
           targetPlatform: ${{ steps.profile.outputs.platform }}
-          customParameters: >
-            -buildProfile ${{ steps.profile.outputs.unityProfile }}
-            -keystoreName "user.keystore"
-            -keystorePass "${{ secrets.CUSTOM_KEYSTORE_PASSWORD }}"
-            -keyaliasName "${{ secrets.CUSTOM_KEY_ALIAS }}"
-            -keyaliasPass "${{ secrets.CUSTOM_KEY_ALIAS_PASSWORD }}"
+          customParameters: -buildProfile ${{ steps.profile.outputs.unityProfile }}
 
       # ----------------------------------------------------------------------
-      # SAVE BUILD ARTIFACT
+      # SAVE ARTIFACT
       # ----------------------------------------------------------------------
       - uses: actions/upload-artifact@v4
         with:
@@ -127,7 +128,7 @@ jobs:
           path: build/Android
 
       # ----------------------------------------------------------------------
-      # OCULUS CLI + META QUEST STORE UPLOAD
+      # META QUEST STORE UPLOAD
       # ----------------------------------------------------------------------
       - name: Setup Oculus CLI
         uses: RageAgainstThePixel/setup-ovr-platform-util@v1
