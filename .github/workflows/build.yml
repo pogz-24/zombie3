@@ -134,4 +134,4 @@ jobs:
           ageGroup: TEENS_AND_ADULTS
 
       - name: Output Meta Quest Build ID
-        run: echo "Meta Quest Build ID: ${{ steps.upload.build_id }}"
+        run: echo Meta Quest Build ID ${{ steps.upload.outputs.build_id }}
