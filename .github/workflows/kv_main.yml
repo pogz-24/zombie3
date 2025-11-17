@@ -1,13 +1,14 @@
-name: Build Quest Project
+
+name: KV Quest Project
 
 on: push
 
 permissions:
-  contents: write, read
+  contents: write
 
 jobs:
   build-quest:
-    if: contains(github.ref_name, 'daily')
+    if: contains(github.ref_name, 'develop')
     runs-on: ubuntu-latest
 
     steps:
@@ -117,11 +118,6 @@ jobs:
           key: Library-Android
           restore-keys: Library-
 
-      - name: Print Unity Build Profile
-        run: |
-          echo "Dumping BuildProfile asset:"
-          cat BuildProfiles/Quest.buildprofile || echo "Profile file not found"
-
       # ----------------------------------------------------------------------
       # UNITY BUILD WITH SIGNING
       # ----------------------------------------------------------------------
@@ -135,7 +131,7 @@ jobs:
           targetPlatform: Android
           customParameters: >
             -buildProfile Quest
-            -keystoreName "$GITHUB_WORKSPACE/Assets/user2.keystore"
+            -keystoreName "user2.keystore"
             -keystorePass "$ANDROID_KEYSTORE_PASS"
             -keyaliasName "$ANDROID_KEY_ALIAS_NAME"
             -keyaliasPass "$ANDROID_KEY_ALIAS_PASS"
