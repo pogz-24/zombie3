@@ -87,8 +87,8 @@ jobs:
       # ----------------------------------------------------------------------
       - name: Restore Android Keystore
         run: |
-          echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > user.keystore
-          echo "user.keystore" >> .git/info/exclude
+          echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > user2.keystore
+          echo "user2.keystore" >> .git/info/exclude
 
       # ----------------------------------------------------------------------
       # CACHE
