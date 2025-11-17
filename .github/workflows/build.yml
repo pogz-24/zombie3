@@ -3,7 +3,7 @@ name: Build Quest Project
 on: push
 
 permissions:
-  contents: write
+  contents: write, read
 
 jobs:
   build-quest:
