@@ -8,26 +8,36 @@ permissions:
 jobs:
   buildQuest:
     name: Build Quest (Android)
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
-      - uses: jlumbroso/free-disk-space@v1.3.1
-
+      # ----------------------------------------------------------------------
+      # CHECKOUT
+      # ----------------------------------------------------------------------
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           lfs: true
 
+      # ----------------------------------------------------------------------
+      # CACHE LIBRARY (Windows path is the same)
+      # ----------------------------------------------------------------------
       - uses: actions/cache@v3
         with:
           path: Library
           key: Library-Android
           restore-keys: Library-
 
-      # Decode your keystore into Base64 if needed
-      # But with GameCI you DON'T need to manually restore it.
-      # GameCI decodes it internally.
+      # ----------------------------------------------------------------------
+      # KEYSTORE (GameCI DECODES THIS INTERNALLY)
+      # ----------------------------------------------------------------------
+      # On Windows you do NOT manually create the keystore file.
+      # unity-builder will decode androidKeystoreBase64 automatically.
+      # Nothing special required.
 
+      # ----------------------------------------------------------------------
+      # BUILD WITH GAMECI (WINDOWS)
+      # ----------------------------------------------------------------------
       - name: Build with GameCI
         uses: game-ci/unity-builder@v4
         env:
@@ -36,7 +46,7 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: Android
-          androidExportType: androidPackage   # APK for Quest
+          androidExportType: androidPackage
           androidKeystoreName: user2.keystore
           androidKeystoreBase64: ${{ secrets.QUEST_KEYSTORE_BASE64 }}
           androidKeystorePass: ${{ secrets.QUEST_KEYSTORE_PASSWORD }}
@@ -44,6 +54,9 @@ jobs:
           androidKeyaliasPass: ${{ secrets.QUEST_KEY_PASSWORD }}
           androidTargetSdkVersion: AndroidApiLevel34
 
+      # ----------------------------------------------------------------------
+      # SAVE THE APK/AAB
+      # ----------------------------------------------------------------------
       - uses: actions/upload-artifact@v4
         with:
           name: quest-build
@@ -65,5 +78,8 @@ jobs:
           releaseChannel: ALPHA
           ageGroup: TEENS_AND_ADULTS
 
+      # ----------------------------------------------------------------------
+      # SHOW RESULT
+      # ----------------------------------------------------------------------
       - name: Output Meta Quest Build ID
         run: echo "Meta Quest Build ID ${{ steps.upload.outputs.build_id }}"
