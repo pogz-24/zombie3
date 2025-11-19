@@ -10,19 +10,7 @@ jobs:
     name: Build Quest (Android)
     runs-on: self-hosted
 
-    steps:
-      - name: Optimize Disk Space (Safe for Unity)
-        uses: hugoalh/disk-space-optimizer-ghaction@v0.8.1
-        with:
-          operate_sudo: "True"
-          general_include: "cache|temp|tmp"
-          apt_clean: "True"
-          apt_prune: "True"
-          npm_clean: "True"
-          npm_prune: "True"
-          docker_prune: "True"
-          os_swap: "True"
-    
+    steps:    
       # ----------------------------------------------------------------------
       # CHECKOUT
       # ----------------------------------------------------------------------
