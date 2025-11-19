@@ -8,7 +8,7 @@ permissions:
 jobs:
   buildQuest:
     name: Build Quest (Android)
-    runs-on: windows-latest
+    runs-on: self-hosted
 
     steps:
       - name: Optimize Disk Space (Safe for Unity)
