@@ -56,6 +56,7 @@ jobs:
           androidKeyaliasName: ${{ secrets.QUEST_KEY_ALIAS }}
           androidKeyaliasPass: ${{ secrets.QUEST_KEY_PASSWORD }}
           androidTargetSdkVersion: AndroidApiLevel34
+          buildName: quest-build
 
       # ----------------------------------------------------------------------
       # SAVE THE APK/AAB
@@ -80,7 +81,6 @@ jobs:
           jobStatus: ${{ job.status }}
           threadKey: ${{ github.event.number }}
           title: "APK: ${{ steps.apk.outputs.apk_name }}"
-          subtitle: "APK Link: ${{ steps.upload.outputs.artifact_url }}"
       # ----------------------------------------------------------------------
       # META QUEST STORE UPLOAD
       # ----------------------------------------------------------------------
