@@ -7,8 +7,8 @@ permissions:
 
 jobs:
   buildQuest:
-    name: Build Quest (Android)
-    runs-on: self-hosted
+    name: Build Ni Sya
+    runs-on: ubuntu-latest
 
     steps:    
       # ----------------------------------------------------------------------
