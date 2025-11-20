@@ -48,8 +48,9 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          #targetPlatform: Android
-          buildProfile: Assets/Settings/Build Profiles/QuestTest.asset
+          targetPlatform: Android
+          buildProfile: 'Assets/Settings/Build Profiles/QuestTest.asset'
+          buildName: quest-build
           androidExportType: androidPackage
           androidKeystoreName: user2.keystore
           androidKeystoreBase64: ${{ secrets.QUEST_KEYSTORE_BASE64 }}
@@ -57,7 +58,6 @@ jobs:
           androidKeyaliasName: ${{ secrets.QUEST_KEY_ALIAS }}
           androidKeyaliasPass: ${{ secrets.QUEST_KEY_PASSWORD }}
           androidTargetSdkVersion: AndroidApiLevel34
-          buildName: quest-build
 
       # ----------------------------------------------------------------------
       # SAVE THE APK/AAB
