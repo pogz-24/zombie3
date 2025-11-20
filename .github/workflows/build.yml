@@ -62,24 +62,29 @@ jobs:
           name: quest-build
           path: build/Android
 
+      - name: Notify Google Chat
+        if: ${{ always() }} # Use always to ensure that the notification is also send on failure of former steps
+        uses: SimonScholz/google-chat-action@main
+        with:
+          webhookUrl: '${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}'
       # ----------------------------------------------------------------------
       # META QUEST STORE UPLOAD
       # ----------------------------------------------------------------------
-      - name: Setup Oculus CLI
-        uses: RageAgainstThePixel/setup-ovr-platform-util@v1
+      #- name: Setup Oculus CLI
+       # uses: RageAgainstThePixel/setup-ovr-platform-util@v1
 
-      - name: Upload APK to Meta Quest Store
-        id: upload
-        uses: RageAgainstThePixel/upload-meta-quest-build@v2
-        with:
-          appId: ${{ secrets.META_APP_ID }}
-          appSecret: ${{ secrets.META_APP_SECRET }}
-          buildDir: build/Android
-          releaseChannel: ALPHA
-          ageGroup: TEENS_AND_ADULTS
+      #- name: Upload APK to Meta Quest Store
+       # id: upload
+        #uses: RageAgainstThePixel/upload-meta-quest-build@v2
+        #with:
+         # appId: ${{ secrets.META_APP_ID }}
+          #appSecret: ${{ secrets.META_APP_SECRET }}
+          #buildDir: build/Android
+          #releaseChannel: ALPHA
+          #ageGroup: TEENS_AND_ADULTS
 
       # ----------------------------------------------------------------------
       # SHOW RESULT
       # ----------------------------------------------------------------------
-      - name: Output Meta Quest Build ID
-        run: echo "Meta Quest Build ID ${{ steps.upload.outputs.build_id }}"
+      #- name: Output Meta Quest Build ID
+       # run: echo "Meta Quest Build ID ${{ steps.upload.outputs.build_id }}"
