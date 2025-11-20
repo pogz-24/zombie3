@@ -48,9 +48,7 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          projectPath: .
-          targetPlatform: Android
-          buildProfile: 'Assets/Settings/Build Profiles/QuestTest.asset'
+          buildProfile: 'Assets/Settings/BuildProfiles/QuestTest.asset'
           buildName: quest-build
           androidExportType: androidPackage
           androidKeystoreName: user2.keystore
