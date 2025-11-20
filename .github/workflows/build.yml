@@ -61,17 +61,26 @@ jobs:
       # SAVE THE APK/AAB
       # ----------------------------------------------------------------------
       - uses: actions/upload-artifact@v4
+        id: upload
         with:
           name: quest-build
           path: build/Android
 
+      - name: Get APK filename
+        id: apk
+        run: |
+          FILE=$(ls build/Android/*.apk | head -n 1)
+          NAME=$(basename "$FILE")
+          echo "apk_name=$NAME" >> $GITHUB_OUTPUT
+
       - name: Notify Google Chat
-        if: ${{ always() }} # Use always to ensure that the notification is also send on failure of former steps
         uses: SimonScholz/google-chat-action@main
         with:
           webhookUrl: '${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}'
           jobStatus: ${{ job.status }}
           threadKey: ${{ github.event.number }}
+          title: "APK: ${{ steps.apk.outputs.apk_name }}"
+          subtitle: "APK Link: ${{ steps.upload.outputs.artifact_url }}"
       # ----------------------------------------------------------------------
       # META QUEST STORE UPLOAD
       # ----------------------------------------------------------------------
