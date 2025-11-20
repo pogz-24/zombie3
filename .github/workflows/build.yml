@@ -48,6 +48,7 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
+          targetPlatform: QuestTest
           buildProfile: 'Assets/Settings/BuildProfiles/QuestTest.asset'
           buildName: quest-build
           androidExportType: androidPackage
