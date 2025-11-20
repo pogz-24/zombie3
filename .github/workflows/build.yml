@@ -67,6 +67,8 @@ jobs:
         uses: SimonScholz/google-chat-action@main
         with:
           webhookUrl: '${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}'
+          jobStatus: ${{ job.status }}
+          threadKey: ${{ github.event.number }}
       # ----------------------------------------------------------------------
       # META QUEST STORE UPLOAD
       # ----------------------------------------------------------------------
