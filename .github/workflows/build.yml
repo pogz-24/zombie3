@@ -49,7 +49,7 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           #targetPlatform: Android
-          buildProfile: 'zombie3/Assets/Settings/Build Profiles/QuestTest.asset'
+          buildProfile: Assets/Settings/Build Profiles/QuestTest.asset
           androidExportType: androidPackage
           androidKeystoreName: user2.keystore
           androidKeystoreBase64: ${{ secrets.QUEST_KEYSTORE_BASE64 }}
