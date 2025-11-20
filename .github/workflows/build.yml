@@ -7,7 +7,7 @@ permissions:
 
 jobs:
   buildQuest:
-    name: Build Ni Sya
+    name: Quest Build
     runs-on: ubuntu-latest
 
     steps:    
@@ -48,7 +48,8 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          targetPlatform: Android
+          #targetPlatform: Android
+          buildProfile: 'Assets/Settings/Build Profiles/WindowsDemo.asset'
           androidExportType: androidPackage
           androidKeystoreName: user2.keystore
           androidKeystoreBase64: ${{ secrets.QUEST_KEYSTORE_BASE64 }}
@@ -62,7 +63,6 @@ jobs:
       # SAVE THE APK/AAB
       # ----------------------------------------------------------------------
       - uses: actions/upload-artifact@v4
-        id: upload
         with:
           name: quest-build
           path: build/Android
@@ -84,21 +84,21 @@ jobs:
       # ----------------------------------------------------------------------
       # META QUEST STORE UPLOAD
       # ----------------------------------------------------------------------
-      #- name: Setup Oculus CLI
-       # uses: RageAgainstThePixel/setup-ovr-platform-util@v1
+      - name: Setup Oculus CLI
+        uses: RageAgainstThePixel/setup-ovr-platform-util@v1
 
-      #- name: Upload APK to Meta Quest Store
-       # id: upload
-        #uses: RageAgainstThePixel/upload-meta-quest-build@v2
-        #with:
-         # appId: ${{ secrets.META_APP_ID }}
-          #appSecret: ${{ secrets.META_APP_SECRET }}
-          #buildDir: build/Android
-          #releaseChannel: ALPHA
-          #ageGroup: TEENS_AND_ADULTS
+      - name: Upload APK to Meta Quest Store
+        id: upload
+        uses: RageAgainstThePixel/upload-meta-quest-build@v2
+        with:
+          appId: ${{ secrets.META_APP_ID }}
+          appSecret: ${{ secrets.META_APP_SECRET }}
+          buildDir: build/Android
+          releaseChannel: ALPHA
+          ageGroup: TEENS_AND_ADULTS
 
       # ----------------------------------------------------------------------
       # SHOW RESULT
       # ----------------------------------------------------------------------
-      #- name: Output Meta Quest Build ID
-       # run: echo "Meta Quest Build ID ${{ steps.upload.outputs.build_id }}"
+      - name: Output Meta Quest Build ID
+        run: echo "Meta Quest Build ID ${{ steps.upload.outputs.build_id }}"
