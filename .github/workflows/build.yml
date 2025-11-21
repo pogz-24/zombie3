@@ -1,6 +1,9 @@
 name: Build Quest Project
 
-on: workflow_dispatch
+#on: workflow_dispatch
+on:
+  schedule:
+    - cron: '00 7 * * 1-5' # the workflow runs every day at 5:30 UTC.
 
 permissions:
   contents: write
