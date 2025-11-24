@@ -29,7 +29,7 @@ jobs:
       - name: Check for required override label
         if: steps.changes.outputs.changed == 'true'
         id: labelcheck
-        uses: actions-ecosystem/action-has-label@v1
+        uses: actions-ecosystem/action-release-label@v1
         with:
           label: "allowed-config-change"
 
