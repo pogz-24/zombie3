@@ -9,18 +9,21 @@ jobs:
 
     permissions:
       contents: read
-      pull-requests: write   # Needed so we can comment
+      pull-requests: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout PR branch safely
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 2
 
       - name: Detect changes in protected folder
         id: changes
         run: |
           git fetch origin ${{ github.base_ref }} --depth=1
 
-          CHANGED=$(git diff --name-only HEAD origin/${{ github.base_ref }} | grep "^Assets/LockedConfigs/" || true)
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }} HEAD | grep "^Assets/LockedConfigs/" || true)
 
           if [ -z "$CHANGED" ]; then
             echo "changed=false" >> $GITHUB_OUTPUT
@@ -28,7 +31,6 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      # ✔ Only runs if folder changed
       - name: Check for present label
         if: steps.changes.outputs.changed == 'true'
         id: labelcheck
@@ -36,7 +38,6 @@ jobs:
         with:
           label: test
 
-      # ❌ Block PR if protected files changed and label missing
       - name: Fail if folder changed and missing label
         if: steps.changes.outputs.changed == 'true' && steps.labelcheck.outputs.has_label != 'true'
         run: |
