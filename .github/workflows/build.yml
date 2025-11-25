@@ -35,6 +35,46 @@ jobs:
           key: Library-Android
           restore-keys: Library-
 
+                # ----------------------------------------------------------------------
+      # VERIFY KEYSTORE SECRETS (GameCI decodes internally)
+      # ----------------------------------------------------------------------
+      - name: Verify keystore secrets
+        run: |
+          echo "🔍 Checking Android signing secrets..."
+
+          if [ -z "${{ secrets.QUEST_KEYSTORE_BASE64 }}" ]; then
+            echo "❌ QUEST_KEYSTORE_BASE64 is EMPTY!"
+            exit 1
+          fi
+
+          if [ -z "${{ secrets.QUEST_KEYSTORE_PASSWORD }}" ]; then
+            echo "❌ QUEST_KEYSTORE_PASSWORD is EMPTY!"
+            exit 1
+          fi
+
+          if [ -z "${{ secrets.QUEST_KEY_ALIAS }}" ]; then
+            echo "❌ QUEST_KEY_ALIAS is EMPTY!"
+            exit 1
+          fi
+
+          if [ -z "${{ secrets.QUEST_KEY_PASSWORD }}" ]; then
+            echo "❌ QUEST_KEY_PASSWORD is EMPTY!"
+            exit 1
+          fi
+
+          echo "✔ Password length: ${#${{ secrets.QUEST_KEYSTORE_PASSWORD }}}"
+          echo "✔ Alias name: '${{ secrets.QUEST_KEY_ALIAS }}'"
+          echo "✔ Alias password length: ${#${{ secrets.QUEST_KEY_PASSWORD }}}"
+
+          # Try decoding keystore to verify Base64 integrity
+          echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > test.keystore || {
+            echo "❌ Keystore base64 is invalid!"
+            exit 1
+          }
+
+          echo "✔ Keystore Base64 successfully decoded."
+          rm test.keystore
+
       # ----------------------------------------------------------------------
       # KEYSTORE (GameCI DECODES THIS INTERNALLY)
       # ----------------------------------------------------------------------
