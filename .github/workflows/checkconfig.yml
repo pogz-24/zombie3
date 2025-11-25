@@ -7,6 +7,10 @@ jobs:
   check-protected-folder:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      pull-requests: write   # Needed so we can comment
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -14,10 +18,8 @@ jobs:
       - name: Detect changes in protected folder
         id: changes
         run: |
-          # Fetch base branch for comparison
           git fetch origin ${{ github.base_ref }} --depth=1
 
-          # Detect if ANY file in Assets/LockedConfigs changed
           CHANGED=$(git diff --name-only HEAD origin/${{ github.base_ref }} | grep "^Assets/LockedConfigs/" || true)
 
           if [ -z "$CHANGED" ]; then
@@ -26,14 +28,17 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
+      # ✔ Only runs if folder changed
       - name: Check for present label
+        if: steps.changes.outputs.changed == 'true'
         id: labelcheck
         uses: egmacke/action-check-label@v1
         with:
           label: test
 
+      # ❌ Block PR if protected files changed and label missing
       - name: Fail if folder changed and missing label
-        if: steps.changes.outputs.changed == 'true' && steps.labelcheck.outputs.has_label == 'false'
+        if: steps.changes.outputs.changed == 'true' && steps.labelcheck.outputs.has_label != 'true'
         run: |
-          echo "Protected folder 'Assets/LockedConfigs' was changed, but PR does not have the required 'allowed-config-change' label."
+          echo "Protected folder 'Assets/LockedConfigs' was changed, but PR does not have the required 'test' label."
           exit 1
