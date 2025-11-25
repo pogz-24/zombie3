@@ -67,13 +67,13 @@ jobs:
           echo "✔ Alias password length: ${#${{ secrets.QUEST_KEY_PASSWORD }}}"
 
           # Try decoding keystore to verify Base64 integrity
-          echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > test.keystore || {
+          echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > user3.keystore || {
             echo "❌ Keystore base64 is invalid!"
             exit 1
           }
 
           echo "✔ Keystore Base64 successfully decoded."
-          rm test.keystore
+          rm user3.keystore
 
       # ----------------------------------------------------------------------
       # KEYSTORE (GameCI DECODES THIS INTERNALLY)
