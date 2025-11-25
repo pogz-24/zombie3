@@ -1,7 +1,7 @@
 name: Protected Config Check
 
 on:
-  pull_request_target:
+  pull_request:
 
 jobs:
   check-protected-folder:
@@ -12,11 +12,8 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Checkout PR branch safely
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 2
 
       - name: Detect changes in protected folder
         id: changes
@@ -31,15 +28,19 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Check for present label
+      # Only check label if folder actually changed
+      - name: Check label presence
         if: steps.changes.outputs.changed == 'true'
-        id: labelcheck
-        uses: egmacke/action-check-label@v1
-        with:
-          label: test
-
-      - name: Fail if folder changed and missing label
-        if: steps.changes.outputs.changed == 'true' && steps.labelcheck.outputs.has_label != 'true'
+        id: labelflag
         run: |
-          echo "Protected folder 'Assets/LockedConfigs' was changed, but PR does not have the required 'test' label."
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'test') }}" == "true" ]]; then
+            echo "label_ok=true" >> $GITHUB_OUTPUT
+          else
+            echo "label_ok=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fail if folder changed and label missing
+        if: steps.changes.outputs.changed == 'true' && steps.labelflag.outputs.label_ok == 'false'
+        run: |
+          echo "::error::Assets/LockedConfigs was modified but PR does NOT have the required label 'test'."
           exit 1
