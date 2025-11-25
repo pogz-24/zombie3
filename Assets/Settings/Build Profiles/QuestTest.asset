@@ -20,8 +20,7 @@ MonoBehaviour:
     rid: 8010006437861523456
   m_OverrideGlobalSceneList: 0
   m_Scenes: []
-  m_ScriptingDefines:
-  - BUILD_PROFILE_LOADED
+  m_ScriptingDefines: []
   m_PlayerSettingsYaml:
     m_Settings:
     - line: '| PlayerSettings:'
@@ -35,7 +34,7 @@ MonoBehaviour:
     - line: '|   targetDevice: 2'
     - line: '|   useOnDemandResources: 0'
     - line: '|   accelerometerFrequency: 60'
-    - line: '|   companyName: DefaultCompany'
+    - line: '|   companyName: NinetySix'
     - line: '|   productName: zombie3'
     - line: '|   defaultCursor: {instanceID: 0}'
     - line: '|   cursorHotspot: {x: 0, y: 0}'
@@ -166,7 +165,7 @@ MonoBehaviour:
     - line: '|   loadStoreDebugModeEnabled: 0'
     - line: '|   visionOSBundleVersion: 1.0'
     - line: '|   tvOSBundleVersion: 1.0'
-    - line: '|   bundleVersion: 1.0'
+    - line: '|   bundleVersion: 1.2'
     - line: '|   preloadedAssets: []'
     - line: '|   metroInputSource: 0'
     - line: '|   wsaTransparentSwapchain: 0'
@@ -189,7 +188,7 @@ MonoBehaviour:
     - line: '|   androidMaxAspectRatio: 2.4'
     - line: '|   androidMinAspectRatio: 1'
     - line: '|   applicationIdentifier:'
-    - line: '|     Android: com.DefaultCompany.zombie3'
+    - line: '|     Android: com.NinetySix.zombie3'
     - line: '|     Standalone: com.DefaultCompany.zombie3'
     - line: '|   buildNumber:'
     - line: '|     Standalone: 0'
@@ -291,8 +290,8 @@ MonoBehaviour:
     - line: '|   AndroidTargetArchitectures: 2'
     - line: '|   AndroidSplashScreenScale: 0'
     - line: '|   androidSplashScreen: {instanceID: 0}'
-    - line: '|   AndroidKeystoreName: '
-    - line: '|   AndroidKeyaliasName: '
+    - line: '|   AndroidKeystoreName: ''{inproject}: user3.keystore'''
+    - line: '|   AndroidKeyaliasName: testalias3'
     - line: '|   AndroidEnableArmv9SecurityFeatures: 0'
     - line: '|   AndroidEnableArm64MTE: 0'
     - line: '|   AndroidBuildApkPerCpuArchitecture: 0'
@@ -304,7 +303,7 @@ MonoBehaviour:
     - line: '|   AndroidEnableTango: 0'
     - line: '|   androidEnableBanner: 1'
     - line: '|   androidUseLowAccuracyLocation: 0'
-    - line: '|   androidUseCustomKeystore: 0'
+    - line: '|   androidUseCustomKeystore: 1'
     - line: '|   m_AndroidBanners:'
     - line: '|   - width: 320'
     - line: '|     height: 180'
@@ -702,7 +701,7 @@ MonoBehaviour:
     - line: '|   webWasm2023: 0'
     - line: '|   webEnableSubmoduleStrippingCompatibility: 0'
     - line: '|   scriptingDefineSymbols:'
-    - line: '|     Android: BUILD_PROFILE_LOADED'
+    - line: '|     Android: '
     - line: '|   additionalCompilerArguments: {}'
     - line: '|   platformArchitecture: {}'
     - line: '|   scriptingBackend: {}'
