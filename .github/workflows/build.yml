@@ -56,7 +56,7 @@ jobs:
           buildProfile: 'Assets/Settings/Build Profiles/QuestTest.asset'
           buildName: quest-build
           androidExportType: androidPackage
-          androidKeystoreName: user.keystore
+          androidKeystoreName: user3.keystore
           androidKeystoreBase64: ${{ secrets.QUEST_KEYSTORE_BASE64 }}
           androidKeystorePass: ${{ secrets.QUEST_KEYSTORE_PASSWORD }}
           androidKeyaliasName: ${{ secrets.QUEST_KEY_ALIAS }}
