@@ -20,7 +20,7 @@ jobs:
         run: |
           git fetch origin ${{ github.base_ref }} --depth=1
 
-          CHANGED=$(git diff --name-only origin/${{ github.base_ref }} HEAD | grep "^Assets/Data/Player/" || true)
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }} HEAD | grep "^Assets/LockedConfigs/" || true)
 
           if [ -z "$CHANGED" ]; then
             echo "changed=false" >> $GITHUB_OUTPUT
@@ -35,7 +35,7 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             ❌ Merge NOT allowed  
-            Protected folder **Assets/Data/Player/** was modified.
+            Protected folder **Assets/LockedConfigs/** was modified.
           reactions: warning
 
       - name: Comment when no changes detected
