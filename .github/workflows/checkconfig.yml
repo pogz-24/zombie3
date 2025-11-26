@@ -1,7 +1,8 @@
 name: Protected Config Check
 
 on:
-  pull_request:
+  #pull_request:
+  workflow_dispatch
 
 jobs:
   check-protected-folder:
