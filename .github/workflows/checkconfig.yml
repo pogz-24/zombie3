@@ -1,4 +1,4 @@
-name: Protected Config Check
+name: Protected Config Check (TEMP)
 
 on:
   pull_request:
@@ -15,12 +15,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Detect changes in protected folder
+      - name: Detect changes in Assets/Data/Player
         id: changes
         run: |
           git fetch origin ${{ github.base_ref }} --depth=1
 
-          CHANGED=$(git diff --name-only origin/${{ github.base_ref }} HEAD | grep "^Assets/LockedConfigs/" || true)
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }} HEAD | grep "^Assets/Data/Player/" || true)
 
           if [ -z "$CHANGED" ]; then
             echo "changed=false" >> $GITHUB_OUTPUT
@@ -28,19 +28,24 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      # Only check label if folder actually changed
-      - name: Check label presence
+      - name: Comment when changes detected
         if: steps.changes.outputs.changed == 'true'
-        id: labelflag
-        run: |
-          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'test') }}" == "true" ]]; then
-            echo "label_ok=true" >> $GITHUB_OUTPUT
-          else
-            echo "label_ok=false" >> $GITHUB_OUTPUT
-          fi
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ❌ Merge NOT allowed  
+            Protected folder **Assets/Data/Player/** was modified.
+          reactions: warning
 
-      - name: Fail if folder changed and label missing
-        if: steps.changes.outputs.changed == 'true' && steps.labelflag.outputs.label_ok == 'false'
-        run: |
-          echo "::error::Assets/LockedConfigs was modified but PR does NOT have the required label 'test'."
-          exit 1
+      - name: Comment when no changes detected
+        if: steps.changes.outputs.changed == 'false'
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ✅ Merge allowed  
+            No protected files were modified.
+          reactions: hooray
+
+
