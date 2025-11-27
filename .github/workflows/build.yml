@@ -11,8 +11,8 @@ permissions:
 jobs:
   buildQuest:
     name: Quest Build
-    #runs-on: ubuntu-latest
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    #runs-on: self-hosted
 
     steps:    
 
@@ -26,54 +26,37 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      - name: Detect commits within last 10 minutes
+        id: recent
+        run: |
+          COMMITS=$(git log --since="10 minutes ago" --oneline)
+
+          if [ -z "$COMMITS" ]; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "$COMMITS"
+          fi
+
+      - name: There are changes
+        if: steps.recent.outputs.changed == 'true'
+        run: |
+          echo "🚨 There are commits in the last 10 minutes!"
+
+      - name: There are no changes
+        if: steps.recent.outputs.changed == 'false'
+        run: |
+          echo "✅ No commits in the last 10 minutes."
+
       # ----------------------------------------------------------------------
       # CACHE LIBRARY (Windows path is the same)
       # ----------------------------------------------------------------------
-      - uses: actions/cache@v3
-        with:
-          path: Library
-          key: Library-Android
-          restore-keys: Library-
+  #    - uses: actions/cache@v3
+  #      with:
+  #        path: Library
+   #       key: Library-Android
+  #        restore-keys: Library-
 
-                # ----------------------------------------------------------------------
-      # VERIFY KEYSTORE SECRETS (GameCI decodes internally)
-      # ----------------------------------------------------------------------
-      - name: Verify keystore secrets
-        run: |
-          echo "🔍 Checking Android signing secrets..."
-
-          if [ -z "${{ secrets.QUEST_KEYSTORE_BASE64 }}" ]; then
-            echo "❌ QUEST_KEYSTORE_BASE64 is EMPTY!"
-            exit 1
-          fi
-
-          if [ -z "${{ secrets.QUEST_KEYSTORE_PASSWORD }}" ]; then
-            echo "❌ QUEST_KEYSTORE_PASSWORD is EMPTY!"
-            exit 1
-          fi
-
-          if [ -z "${{ secrets.QUEST_KEY_ALIAS }}" ]; then
-            echo "❌ QUEST_KEY_ALIAS is EMPTY!"
-            exit 1
-          fi
-
-          if [ -z "${{ secrets.QUEST_KEY_PASSWORD }}" ]; then
-            echo "❌ QUEST_KEY_PASSWORD is EMPTY!"
-            exit 1
-          fi
-
-          echo "✔ Password length: ${#${{ secrets.QUEST_KEYSTORE_PASSWORD }}}"
-          echo "✔ Alias name: '${{ secrets.QUEST_KEY_ALIAS }}'"
-          echo "✔ Alias password length: ${#${{ secrets.QUEST_KEY_PASSWORD }}}"
-
-          # Try decoding keystore to verify Base64 integrity
-          echo "${{ secrets.QUEST_KEYSTORE_BASE64 }}" | base64 --decode > user3.keystore || {
-            echo "❌ Keystore base64 is invalid!"
-            exit 1
-          }
-
-          echo "✔ Keystore Base64 successfully decoded."
-          rm user3.keystore
 
       # ----------------------------------------------------------------------
       # KEYSTORE (GameCI DECODES THIS INTERNALLY)
@@ -85,64 +68,64 @@ jobs:
       # ----------------------------------------------------------------------
       # BUILD WITH GAMECI (WINDOWS)
       # ----------------------------------------------------------------------
-      - name: Build with GameCI
-        uses: game-ci/unity-builder@v4
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        with:
-          targetPlatform: Android
-          buildProfile: 'Assets/Settings/Build Profiles/QuestTest.asset'
-          buildName: quest-build
-          androidExportType: androidPackage
-          androidKeystoreName: user3.keystore
-          androidKeystoreBase64: ${{ secrets.QUEST_KEYSTORE_BASE64 }}
-          androidKeystorePass: ${{ secrets.QUEST_KEYSTORE_PASSWORD }}
-          androidKeyaliasName: ${{ secrets.QUEST_KEY_ALIAS }}
-          androidKeyaliasPass: ${{ secrets.QUEST_KEY_PASSWORD }}
-          androidTargetSdkVersion: AndroidApiLevel34
+  #    - name: Build with GameCI
+   #     uses: game-ci/unity-builder@v4
+    #    env:
+    #      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+    #      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+   #       UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+    #    with:
+    #      targetPlatform: Android
+    #      buildProfile: 'Assets/Settings/Build Profiles/QuestTest.asset'
+    #      buildName: quest-build
+    #      androidExportType: androidPackage
+    #      androidKeystoreName: user3.keystore
+     #     androidKeystoreBase64: ${{ secrets.QUEST_KEYSTORE_BASE64 }}
+     #     androidKeystorePass: ${{ secrets.QUEST_KEYSTORE_PASSWORD }}
+    #      androidKeyaliasName: ${{ secrets.QUEST_KEY_ALIAS }}
+    #      androidKeyaliasPass: ${{ secrets.QUEST_KEY_PASSWORD }}
+    #      androidTargetSdkVersion: AndroidApiLevel34
 
       # ----------------------------------------------------------------------
       # SAVE THE APK/AAB
       # ----------------------------------------------------------------------
-      - uses: actions/upload-artifact@v4
-        with:
-          name: quest-build
-          path: build/Android
+   #   - uses: actions/upload-artifact@v4
+     #   with:
+    #      name: quest-build
+         # path: build/Android
 
-      - name: Get APK filename
-        id: apk
-        run: |
-          FILE=$(ls build/Android/*.apk | head -n 1)
-          NAME=$(basename "$FILE")
-          echo "apk_name=$NAME" >> $GITHUB_OUTPUT
+     # - name: Get APK filename
+      #  id: apk
+     #   run: |
+        #  FILE=$(ls build/Android/*.apk | head -n 1)
+       #   NAME=$(basename "$FILE")
+         # echo "apk_name=$NAME" >> $GITHUB_OUTPUT
 
-      - name: Notify Google Chat
-        uses: SimonScholz/google-chat-action@main
-        with:
-          webhookUrl: '${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}'
-          jobStatus: ${{ job.status }}
-          threadKey: ${{ github.event.number }}
-          title: "APK: ${{ steps.apk.outputs.apk_name }}"
+     # - name: Notify Google Chat
+        #uses: SimonScholz/google-chat-action@main
+       # with:
+         # webhookUrl: '${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}'
+        #  jobStatus: ${{ job.status }}
+       #   threadKey: ${{ github.event.number }}
+      #    title: "APK: ${{ steps.apk.outputs.apk_name }}"
       # ----------------------------------------------------------------------
       # META QUEST STORE UPLOAD
       # ----------------------------------------------------------------------
-      - name: Setup Oculus CLI
-        uses: RageAgainstThePixel/setup-ovr-platform-util@v1
+     # - name: Setup Oculus CLI
+      #  uses: RageAgainstThePixel/setup-ovr-platform-util@v1
 
-      - name: Upload APK to Meta Quest Store
-        id: upload
-        uses: RageAgainstThePixel/upload-meta-quest-build@v2
-        with:
-          appId: ${{ secrets.META_APP_ID }}
-          appSecret: ${{ secrets.META_APP_SECRET }}
-          buildDir: build/Android
-          releaseChannel: ALPHA
-          ageGroup: TEENS_AND_ADULTS
+     # - name: Upload APK to Meta Quest Store
+       # id: upload
+       # uses: RageAgainstThePixel/upload-meta-quest-build@v2
+       # with:
+          #appId: ${{ secrets.META_APP_ID }}
+          #appSecret: ${{ secrets.META_APP_SECRET }}
+         # buildDir: build/Android
+        #  releaseChannel: ALPHA
+       #   ageGroup: TEENS_AND_ADULTS
 
       # ----------------------------------------------------------------------
       # SHOW RESULT
       # ----------------------------------------------------------------------
-      - name: Output Meta Quest Build ID
-        run: echo "Meta Quest Build ID ${{ steps.upload.outputs.build_id }}"
+      #- name: Output Meta Quest Build ID
+        #run: echo "Meta Quest Build ID ${{ steps.upload.outputs.build_id }}"
